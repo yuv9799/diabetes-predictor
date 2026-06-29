@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Diabetes SVM — Complete Explanation</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #f7f6f3;
+      --surface:  #ffffff;
+      --surface2: #f0eeea;
+      --border:   #e0ddd6;
+      --text:     #1a1a18;
+      --muted:    #6b6b66;
+      --accent:   #185FA5;
+      --accent-bg:#E6F1FB;
+      --green:    #3B6D11;
+      --green-bg: #EAF3DE;
+      --red:      #A32D2D;
+      --red-bg:   #FCEBEB;
+      --amber:    #854F0B;
+      --amber-bg: #FAEEDA;
+      --purple:   #3C3489;
+      --purple-bg:#EEEDFE;
+      --teal:     #0F6E56;
+      --teal-bg:  #E1F5EE;
+      --radius:   10px;
+      --mono:     'Courier New', Courier, monospace;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      font-size: 15px;
+    }
+
+    /* ── Layout ── */
+    .page { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+    header { margin-bottom: 2.5rem; }
+    header h1 { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+    header p  { color: var(--muted); font-size: 14px; }
+
+    .badge { display: inline-block; font-size: 11px; font-weight: 600; border-radius: 5px; padding: 2px 8px; margin-right: 5px; margin-bottom: 4px; }
+    .badge-b { background: var(--accent-bg); color: var(--accent); }
+    .badge-g { background: var(--green-bg);  color: var(--green); }
+    .badge-r { background: var(--red-bg);    color: var(--red); }
+    .badge-a { background: var(--amber-bg);  color: var(--amber); }
+    .badge-p { background: var(--purple-bg); color: var(--purple); }
+    .badge-t { background: var(--teal-bg);   color: var(--teal); }
+
+    /* ── Section ── */
+    .section { margin-bottom: 2.5rem; }
+    .sec-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--muted);
+      border-bottom: 1.5px solid var(--border);
+      padding-bottom: 6px; margin-bottom: 1.2rem;
+    }
+    h2 { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+    h3 { font-size: 15px; font-weight: 600; margin: 1.2rem 0 6px; }
+    p  { margin-bottom: 10px; color: #2a2a28; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.2rem 1.4rem;
+      margin-bottom: 1rem;
+    }
+
+    /* ── Pipeline ── */
+    .pipeline { display: flex; flex-wrap: wrap; gap: 0; align-items: center; margin-bottom: 1.2rem; }
+    .pip-step {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 7px 14px;
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      transition: background .15s, border-color .15s;
+    }
+    .pip-step:hover   { background: var(--surface2); }
+    .pip-step.active  { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+    .pip-arrow { color: var(--muted); padding: 0 4px; font-size: 16px; }
+    #pip-detail {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.2rem 1.4rem; min-height: 130px;
+    }
+    .pip-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .pip-icon { font-size: 22px; }
+    .pip-title { font-size: 15px; font-weight: 600; }
+    .pip-body  { font-size: 13.5px; color: #333330; line-height: 1.7; }
+
+    /* ── Code ── */
+    code { font-family: var(--mono); font-size: 12.5px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; color: #333; }
+    pre  {
+      font-family: var(--mono); font-size: 13px; background: #1e1e1e;
+      color: #d4d4d4; border-radius: var(--radius);
+      padding: 1.2rem 1.4rem; overflow-x: auto; margin: 10px 0;
+      line-height: 1.6;
+    }
+    pre .kw  { color: #569cd6; }
+    pre .fn  { color: #dcdcaa; }
+    pre .st  { color: #ce9178; }
+    pre .cm  { color: #6a9955; font-style: italic; }
+    pre .nm  { color: #b5cea8; }
+    pre .cl  { color: #4ec9b0; }
+
+    /* ── Dataset table ── */
+    .ds-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+    .ds-col { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 13px; }
+    .ds-col.target { border-color: var(--accent); background: var(--accent-bg); }
+    .ds-name  { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+    .ds-type  { font-size: 11px; color: var(--muted); }
+    .ds-range { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+    /* ── Stats ── */
+    .stat-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; flex: 1; min-width: 100px; }
+    .stat-label { font-size: 11px; color: var(--muted); margin-bottom: 3px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-val   { font-size: 22px; font-weight: 700; }
+    .stat-sub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* ── SVM SVG ── */
+    .svm-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; }
+    .svm-box svg { display: block; width: 100%; max-width: 700px; margin: 0 auto; }
+
+    /* ── Prediction ── */
+    .pred-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .pred-row  { display: flex; flex-direction: column; gap: 3px; }
+    .pred-key  { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+    .pred-val  { font-size: 13px; font-weight: 500; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; }
+    .pred-result { border-radius: 8px; padding: 13px 16px; font-size: 14px; font-weight: 600; text-align: center; margin-top: 4px; }
+    .result-yes { background: var(--red-bg);   color: var(--red);   border: 1px solid #f7c1c1; }
+    .result-no  { background: var(--green-bg); color: var(--green); border: 1px solid #c0dd97; }
+
+    /* ── Q&A ── */
+    .qa-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; overflow: hidden; }
+    .qa-q {
+      width: 100%; text-align: left; background: none; border: none;
+      padding: 13px 16px; font-size: 14px; font-weight: 600; cursor: pointer;
+      display: flex; justify-content: space-between; align-items: center; gap: 10px;
+      color: var(--text);
+    }
+    .qa-q:hover { background: var(--surface2); }
+    .qa-q .arrow { font-size: 12px; color: var(--muted); transition: transform .2s; flex-shrink: 0; }
+    .qa-q.open .arrow { transform: rotate(90deg); }
+    .qa-a { display: none; padding: 0 16px 14px; font-size: 13.5px; line-height: 1.7; color: #2a2a28; border-top: 1px solid var(--border); }
+    .qa-a.open { display: block; }
+    .qa-a p { margin-top: 10px; margin-bottom: 0; }
+
+    /* ── Concepts ── */
+    .concept-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 600px) { .concept-grid { grid-template-columns: 1fr; } }
+    .concept-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.2rem; }
+    .concept-title { font-size: 13px; font-weight: 700; margin-bottom: 5px; }
+    .concept-body  { font-size: 13px; color: #333; line-height: 1.6; }
+
+    /* ── TOC ── */
+    .toc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.4rem; margin-bottom: 2rem; }
+    .toc-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 8px; }
+    .toc ol { padding-left: 1.2rem; }
+    .toc li { font-size: 13.5px; margin-bottom: 3px; }
+    .toc a  { color: var(--accent); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <header>
+    <h1>🩺 Diabetes Prediction — SVM Project</h1>
+    <p>Complete explanation of <strong>diabetes.csv</strong> + <strong>info.ipynb</strong> &nbsp;·&nbsp; Everything you need to understand, explain, and answer questions on this project.</p>
+    <div style="margin-top: 10px;">
+      <span class="badge badge-b">Python</span>
+      <span class="badge badge-b">scikit-learn</span>
+      <span class="badge badge-b">pandas</span>
+      <span class="badge badge-g">SVM Classifier</span>
+      <span class="badge badge-a">Binary Classification</span>
+      <span class="badge badge-p">Pima Indians Dataset</span>
+    </div>
+  </header>
+
+  <!-- TOC -->
+  <div class="toc">
+    <div class="toc-title">Contents</div>
+    <ol>
+      <li><a href="#dataset">The Dataset — diabetes.csv</a></li>
+      <li><a href="#pipeline">Pipeline Walkthrough (7 stages)</a></li>
+      <li><a href="#full-code">Full Annotated Code</a></li>
+      <li><a href="#svm">SVM — How It Works (Visual)</a></li>
+      <li><a href="#concepts">Key Concepts Explained</a></li>
+      <li><a href="#prediction">Example Prediction Explained</a></li>
+      <li><a href="#qa">Probable Exam / Viva Questions & Answers</a></li>
+    </ol>
+  </div>
+
+  <!-- ═══ 1. DATASET ═══ -->
+  <div class="section" id="dataset">
+    <div class="sec-label">Section 1</div>
+    <h2>The Dataset — diabetes.csv</h2>
+    <p>This is the <strong>Pima Indians Diabetes Dataset</strong> — one of the most widely used datasets for binary classification. It contains health measurements from <strong>768 Pima Indian women</strong> aged 21 and above, collected by the US National Institute of Diabetes and Digestive and Kidney Diseases.</p>
+
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-label">Total rows</div><div class="stat-val">768</div><div class="stat-sub">Pima Indian women ≥21 yrs</div></div>
+      <div class="stat-card"><div class="stat-label">Total columns</div><div class="stat-val">9</div><div class="stat-sub">8 features + 1 label</div></div>
+      <div class="stat-card"><div class="stat-label" style="color:var(--green)">Healthy (0)</div><div class="stat-val" style="color:var(--green)">500</div><div class="stat-sub">65.1% of dataset</div></div>
+      <div class="stat-card"><div class="stat-label" style="color:var(--red)">Diabetic (1)</div><div class="stat-val" style="color:var(--red)">268</div><div class="stat-sub">34.9% of dataset</div></div>
+      <div class="stat-card"><div class="stat-label">Missing values</div><div class="stat-val">0</div><div class="stat-sub">Clean — no NaNs</div></div>
+    </div>
+
+    <h3>All 9 Columns</h3>
+    <div class="ds-grid">
+      <div class="ds-col"><div class="ds-name">Pregnancies</div><div class="ds-type">int · feature</div><div class="ds-range">Range: 0 – 17<br>Number of pregnancies</div></div>
+      <div class="ds-col"><div class="ds-name">Glucose</div><div class="ds-type">int · feature</div><div class="ds-range">Range: 0 – 199 mg/dL<br>Plasma glucose (2hr oral test)</div></div>
+      <div class="ds-col"><div class="ds-name">BloodPressure</div><div class="ds-type">int · feature</div><div class="ds-range">Range: 0 – 122 mmHg<br>Diastolic blood pressure</div></div>
+      <div class="ds-col"><div class="ds-name">SkinThickness</div><div class="ds-type">int · feature</div><div class="ds-range">Range: 0 – 99 mm<br>Triceps skin fold thickness</div></div>
+      <div class="ds-col"><div class="ds-name">Insulin</div><div class="ds-type">int · feature</div><div class="ds-range">Range: 0 – 846 µU/mL<br>2-hour serum insulin</div></div>
+      <div class="ds-col"><div class="ds-name">BMI</div><div class="ds-type">float · feature</div><div class="ds-range">Range: 0 – 67.1<br>Body mass index (wt/ht²)</div></div>
+      <div class="ds-col"><div class="ds-name">DiabetesPedigreeFunction</div><div class="ds-type">float · feature</div><div class="ds-range">Range: 0.08 – 2.42<br>Genetic/family risk score</div></div>
+      <div class="ds-col"><div class="ds-name">Age</div><div class="ds-type">int · feature</div><div class="ds-range">Range: 21 – 81 yrs</div></div>
+      <div class="ds-col target"><div class="ds-name" style="color:var(--accent)">Outcome ← TARGET</div><div class="ds-type" style="color:var(--accent)">int · label</div><div class="ds-range" style="color:var(--accent)">0 = not diabetic<br>1 = diabetic</div></div>
+    </div>
+
+    <div class="card" style="margin-top:1rem; background:var(--amber-bg); border-color:#FAC775;">
+      <strong style="color:var(--amber);">⚠ Data quality note:</strong>
+      <span style="font-size:13.5px;"> Columns like Glucose, Insulin, BMI and BloodPressure contain <strong>0 values</strong>, which are biologically impossible. These are actually <em>missing values encoded as 0</em>. In a production model you'd impute or remove them, but this notebook skips that step for simplicity.</span>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- ═══ 2. PIPELINE ═══ -->
+  <div class="section" id="pipeline">
+    <div class="sec-label">Section 2</div>
+    <h2>Pipeline Walkthrough — 7 Stages</h2>
+    <p>Click any stage to see what it does and why it matters.</p>
+
+    <div class="pipeline">
+      <div class="pip-step active" id="ps0" onclick="showStep(0)">1. Load data</div>
+      <span class="pip-arrow">›</span>
+      <div class="pip-step" id="ps1" onclick="showStep(1)">2. EDA</div>
+      <span class="pip-arrow">›</span>
+      <div class="pip-step" id="ps2" onclick="showStep(2)">3. Separate X & Y</div>
+      <span class="pip-arrow">›</span>
+      <div class="pip-step" id="ps3" onclick="showStep(3)">4. Standardise</div>
+      <span class="pip-arrow">›</span>
+      <div class="pip-step" id="ps4" onclick="showStep(4)">5. Train/test split</div>
+      <span class="pip-arrow">›</span>
+      <div class="pip-step" id="ps5" onclick="showStep(5)">6. Train SVM</div>
+      <span class="pip-arrow">›</span>
+      <div class="pip-step" id="ps6" onclick="showStep(6)">7. Predict</div>
+    </div>
+
+    <div id="pip-detail">
+      <!-- filled by JS -->
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- ═══ 3. FULL CODE ═══ -->
+  <div class="section" id="full-code">
+    <div class="sec-label">Section 3</div>
+    <h2>Full Annotated Code</h2>
+    <p>Every line from the notebook, with explanations inline as comments.</p>
+
+    <h3>Step 1 — Imports</h3>
+<pre><span class="kw">import</span> numpy <span class="kw">as</span> np          <span class="cm"># for array operations & reshaping</span>
+<span class="kw">import</span> pandas <span class="kw">as</span> pd         <span class="cm"># for loading and exploring the CSV</span>
+
+<span class="kw">from</span> sklearn.preprocessing <span class="kw">import</span> <span class="cl">StandardScaler</span>   <span class="cm"># normalise features</span>
+<span class="kw">from</span> sklearn.model_selection <span class="kw">import</span> <span class="fn">train_test_split</span> <span class="cm"># split data</span>
+<span class="kw">from</span> sklearn <span class="kw">import</span> svm                               <span class="cm"># SVM classifier</span>
+<span class="kw">from</span> sklearn.metrics <span class="kw">import</span> <span class="fn">accuracy_score</span>           <span class="cm"># evaluate model</span></pre>
+
+    <h3>Step 2 — Load & explore data</h3>
+<pre>healthy = pd.<span class="fn">read_csv</span>(<span class="st">'diabetes.csv'</span>)  <span class="cm"># load CSV into a DataFrame</span>
+<span class="cm"># Note: the variable is called 'healthy' but contains both classes</span>
+
+healthy.<span class="fn">head</span>()          <span class="cm"># view first 5 rows</span>
+healthy.shape           <span class="cm"># → (768, 9) — 768 rows, 9 columns</span>
+healthy.<span class="fn">describe</span>()      <span class="cm"># statistics: mean, std, min, max for each column</span>
+
+healthy[<span class="st">'Outcome'</span>].<span class="fn">value_counts</span>()   <span class="cm"># 0→500  1→268</span>
+<span class="cm"># 0 = not diabetic, 1 = diabetic</span>
+
+healthy.<span class="fn">groupby</span>(<span class="st">'Outcome'</span>).<span class="fn">mean</span>()
+<span class="cm"># Key insight: diabetic patients have higher average glucose (~141 vs ~110)
+# and higher BMI (~35 vs ~30)</span></pre>
+
+    <h3>Step 3 — Separate features (X) and label (Y)</h3>
+<pre>X = healthy.<span class="fn">drop</span>(columns=<span class="st">'Outcome'</span>)  <span class="cm"># all 8 feature columns</span>
+Y = healthy[<span class="st">'Outcome'</span>]               <span class="cm"># the target column (0 or 1)</span>
+<span class="cm"># X.shape → (768, 8)   Y.shape → (768,)</span></pre>
+
+    <h3>Step 4 — Standardise (scale) the features</h3>
+<pre>scaler = <span class="cl">StandardScaler</span>()   <span class="cm"># initialise the scaler</span>
+
+scaler.<span class="fn">fit</span>(X)              <span class="cm"># learn mean and std from the data</span>
+<span class="cm"># StandardScaler stores: mean_ and scale_ for each feature</span>
+
+standardized_data = scaler.<span class="fn">transform</span>(X)
+<span class="cm"># Formula applied: z = (x - mean) / std
+# Now every feature has mean=0, std=1
+# This is critical for SVM — it is distance-based, so scale matters!</span>
+
+X = standardized_data     <span class="cm"># overwrite X with the scaled version</span>
+Y = healthy[<span class="st">'Outcome'</span>]   <span class="cm"># Y stays unchanged</span></pre>
+
+    <h3>Step 5 — Train / Test split</h3>
+<pre>X_train, X_test, Y_train, Y_test = <span class="fn">train_test_split</span>(
+    X, Y,
+    test_size=<span class="nm">0.2</span>,        <span class="cm"># 20% goes to test set  → 154 rows</span>
+    stratify=Y,           <span class="cm"># preserve class ratio in both splits</span>
+    random_state=<span class="nm">2</span>        <span class="cm"># seed for reproducibility</span>
+)
+<span class="cm"># X.shape=(768,8)  X_train.shape=(614,8)  X_test.shape=(154,8)</span></pre>
+
+    <h3>Step 6 — Train the SVM classifier</h3>
+<pre>classifier = svm.<span class="cl">SVC</span>(kernel=<span class="st">'linear'</span>)
+<span class="cm"># SVC = Support Vector Classifier
+# kernel='linear' → finds a straight hyperplane to separate classes
+# (kernel='rbf' would allow curved boundaries for non-linear data)</span>
+
+classifier.<span class="fn">fit</span>(X_train, Y_train)
+<span class="cm"># The SVM finds the hyperplane with maximum margin
+# Only the 'support vectors' (closest points) define it</span></pre>
+
+    <h3>Step 7 — Evaluate accuracy</h3>
+<pre>X_train_prediction = classifier.<span class="fn">predict</span>(X_train)
+training_accuracy  = <span class="fn">accuracy_score</span>(X_train_prediction, Y_train)
+<span class="fn">print</span>(<span class="st">'Training accuracy:'</span>, training_accuracy)   <span class="cm"># ~0.786</span>
+
+X_test_prediction = classifier.<span class="fn">predict</span>(X_test)
+test_accuracy     = <span class="fn">accuracy_score</span>(X_test_prediction, Y_test)
+<span class="fn">print</span>(<span class="st">'Test accuracy:'</span>, test_accuracy)             <span class="cm"># ~0.773</span>
+
+<span class="cm"># Small gap between train and test accuracy = good generalisation
+# A large gap would indicate overfitting</span></pre>
+
+    <h3>Step 8 — Predict for a new person</h3>
+<pre>input_data = (<span class="nm">5</span>, <span class="nm">166</span>, <span class="nm">72</span>, <span class="nm">19</span>, <span class="nm">175</span>, <span class="nm">25.8</span>, <span class="nm">0.587</span>, <span class="nm">51</span>)
+<span class="cm"># Pregnancies=5, Glucose=166, BloodPressure=72, SkinThickness=19
+# Insulin=175, BMI=25.8, DiabetesPedigree=0.587, Age=51</span>
+
+input_array   = np.<span class="fn">asarray</span>(input_data)          <span class="cm"># convert to numpy array</span>
+input_reshaped = input_array.<span class="fn">reshape</span>(<span class="nm">1</span>, <span class="nm">-1</span>)       <span class="cm"># shape: (1, 8) — 1 sample, 8 features</span>
+std_data       = scaler.<span class="fn">transform</span>(input_reshaped) <span class="cm"># scale using SAME scaler (not fit again!)</span>
+
+prediction = classifier.<span class="fn">predict</span>(std_data)
+<span class="fn">print</span>(prediction)     <span class="cm"># [1]</span>
+
+<span class="kw">if</span> prediction[<span class="nm">0</span>] == <span class="nm">0</span>:
+    <span class="fn">print</span>(<span class="st">'The person is NOT diabetic'</span>)
+<span class="kw">else</span>:
+    <span class="fn">print</span>(<span class="st">'The person IS diabetic'</span>)   <span class="cm"># ← this one prints</span></pre>
+  </div>
+
+  <hr>
+
+  <!-- ═══ 4. SVM VISUAL ═══ -->
+  <div class="section" id="svm">
+    <div class="sec-label">Section 4</div>
+    <h2>SVM — How It Works (Visual)</h2>
+    <p>Support Vector Machine finds the <strong>hyperplane</strong> that separates the two classes with the <strong>widest possible margin</strong>. The data points on the boundary edges are called <strong>support vectors</strong> — they are the only points that define the boundary.</p>
+
+    <div class="svm-box">
+      <svg viewBox="0 0 680 250">
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+            <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </marker>
+        </defs>
+        <!-- Background zones -->
+        <rect x="10" y="10" width="295" height="230" rx="10" fill="#EAF3DE" opacity="0.55"/>
+        <rect x="375" y="10" width="295" height="230" rx="10" fill="#FCEBEB" opacity="0.55"/>
+        <!-- Margin lines -->
+        <line x1="330" y1="10" x2="330" y2="240" stroke="#185FA5" stroke-width="2.5" stroke-dasharray="8 4"/>
+        <line x1="290" y1="10" x2="290" y2="240" stroke="#185FA5" stroke-width="1" stroke-dasharray="4 4" opacity="0.5"/>
+        <line x1="370" y1="10" x2="370" y2="240" stroke="#185FA5" stroke-width="1" stroke-dasharray="4 4" opacity="0.5"/>
+        <!-- Margin brace -->
+        <line x1="290" y1="32" x2="370" y2="32" stroke="#185FA5" stroke-width="1.2" marker-end="url(#arr)" marker-start="url(#arr)"/>
+        <text x="330" y="25" text-anchor="middle" font-size="11" fill="#185FA5" font-family="sans-serif">margin (maximised)</text>
+        <!-- Green dots -->
+        <circle cx="55"  cy="90"  r="8" fill="#639922" opacity="0.9"/>
+        <circle cx="100" cy="150" r="8" fill="#639922" opacity="0.9"/>
+        <circle cx="75"  cy="55"  r="8" fill="#639922" opacity="0.9"/>
+        <circle cx="155" cy="110" r="8" fill="#639922" opacity="0.9"/>
+        <circle cx="210" cy="75"  r="8" fill="#639922" opacity="0.9"/>
+        <circle cx="170" cy="175" r="8" fill="#639922" opacity="0.9"/>
+        <circle cx="50"  cy="190" r="8" fill="#639922" opacity="0.9"/>
+        <circle cx="240" cy="140" r="8" fill="#639922" opacity="0.9"/>
+        <!-- Red dots -->
+        <circle cx="430" cy="95"  r="8" fill="#E24B4A" opacity="0.9"/>
+        <circle cx="475" cy="160" r="8" fill="#E24B4A" opacity="0.9"/>
+        <circle cx="520" cy="70"  r="8" fill="#E24B4A" opacity="0.9"/>
+        <circle cx="545" cy="130" r="8" fill="#E24B4A" opacity="0.9"/>
+        <circle cx="600" cy="95"  r="8" fill="#E24B4A" opacity="0.9"/>
+        <circle cx="490" cy="42"  r="8" fill="#E24B4A" opacity="0.9"/>
+        <circle cx="620" cy="175" r="8" fill="#E24B4A" opacity="0.9"/>
+        <circle cx="405" cy="185" r="8" fill="#E24B4A" opacity="0.9"/>
+        <!-- Support vectors (ringed) -->
+        <circle cx="265" cy="120" r="8" fill="#639922" opacity="0.9"/>
+        <circle cx="265" cy="120" r="14" fill="none" stroke="#185FA5" stroke-width="2"/>
+        <circle cx="398" cy="120" r="8" fill="#E24B4A" opacity="0.9"/>
+        <circle cx="398" cy="120" r="14" fill="none" stroke="#185FA5" stroke-width="2"/>
+        <!-- Labels -->
+        <text x="145" y="238" text-anchor="middle" font-size="13" fill="#3B6D11" font-family="sans-serif" font-weight="bold">Healthy (0)</text>
+        <text x="515" y="238" text-anchor="middle" font-size="13" fill="#A32D2D" font-family="sans-serif" font-weight="bold">Diabetic (1)</text>
+        <text x="330" y="145" text-anchor="middle" font-size="12" fill="#185FA5" font-family="sans-serif" font-weight="bold">Decision boundary</text>
+        <text x="265" y="155" text-anchor="middle" font-size="10" fill="#185FA5" font-family="sans-serif">support vector</text>
+        <text x="398" y="155" text-anchor="middle" font-size="10" fill="#185FA5" font-family="sans-serif">support vector</text>
+      </svg>
+      <p style="font-size:13px; color:var(--muted); margin-top:10px; line-height:1.65;">
+        The <strong>dashed vertical line</strong> is the decision boundary (hyperplane). The two faint lines form the <strong>margin</strong>. 
+        Points on the margin edges (ringed circles) are the <strong>support vectors</strong>. 
+        SVM maximises the margin width — wider margin = better generalisation to new data.
+        In 8-dimensional feature space, this "line" becomes an 8D hyperplane.
+      </p>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- ═══ 5. KEY CONCEPTS ═══ -->
+  <div class="section" id="concepts">
+    <div class="sec-label">Section 5</div>
+    <h2>Key Concepts Explained</h2>
+
+    <div class="concept-grid">
+      <div class="concept-card" style="border-top: 3px solid var(--accent);">
+        <div class="concept-title" style="color:var(--accent);">📐 StandardScaler</div>
+        <div class="concept-body">Transforms each feature to <strong>mean=0, std=1</strong> using:<br>
+        <code>z = (x − mean) / std</code><br><br>
+        Why? SVM is distance-based. Without scaling, Insulin (0–846) would dominate Pregnancies (0–17) purely due to range, not medical importance.</div>
+      </div>
+
+      <div class="concept-card" style="border-top: 3px solid var(--green);">
+        <div class="concept-title" style="color:var(--green);">✂️ train_test_split</div>
+        <div class="concept-body">Splits data into 80% training + 20% testing. <code>stratify=Y</code> ensures the class ratio (65/35) is preserved in <em>both</em> splits. Without stratify, the test set could accidentally contain too many of one class.</div>
+      </div>
+
+      <div class="concept-card" style="border-top: 3px solid var(--purple);">
+        <div class="concept-title" style="color:var(--purple);">🤖 SVM — kernel='linear'</div>
+        <div class="concept-body">Finds a flat hyperplane in n-dimensional space separating the two classes with maximum margin. <code>kernel='linear'</code> = straight boundary. <code>kernel='rbf'</code> = curved boundary for non-linearly separable data. Support vectors are the closest points to the boundary.</div>
+      </div>
+
+      <div class="concept-card" style="border-top: 3px solid var(--amber);">
+        <div class="concept-title" style="color:var(--amber);">📊 Accuracy score</div>
+        <div class="concept-body">Fraction of correctly predicted samples. Training accuracy ≈ 78.6%, Test accuracy ≈ 77.3%. Small gap is healthy. A big gap (high train, low test) = overfitting. On imbalanced data, accuracy alone is misleading — prefer <strong>F1-score, AUC-ROC</strong>.</div>
+      </div>
+
+      <div class="concept-card" style="border-top: 3px solid var(--red);">
+        <div class="concept-title" style="color:var(--red);">⚖️ Class imbalance</div>
+        <div class="concept-body">500 healthy vs 268 diabetic = imbalanced. A model that always predicts "healthy" gets 65% accuracy without learning anything. That's why both train and test accuracy are checked, and <code>stratify=Y</code> is used.</div>
+      </div>
+
+      <div class="concept-card" style="border-top: 3px solid var(--teal);">
+        <div class="concept-title" style="color:var(--teal);">🔄 reshape(1, -1)</div>
+        <div class="concept-body">scikit-learn expects input as a 2D array: <code>(n_samples, n_features)</code>. A single prediction is shape <code>(8,)</code> — 1D. <code>reshape(1, -1)</code> converts it to <code>(1, 8)</code> — 1 sample, 8 features. Without this, predict() will throw an error.</div>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- ═══ 6. PREDICTION ═══ -->
+  <div class="section" id="prediction">
+    <div class="sec-label">Section 6</div>
+    <h2>Example Prediction — Step by Step</h2>
+    <p>The notebook tests with this patient's data. Here's what each value means medically and why the model predicts diabetic:</p>
+
+    <div class="card">
+      <div class="pred-grid">
+        <div class="pred-row"><div class="pred-key">Pregnancies</div><div class="pred-val">5 &nbsp;<span style="color:var(--muted);font-size:12px;">moderate</span></div></div>
+        <div class="pred-row"><div class="pred-key">Glucose</div><div class="pred-val" style="color:var(--red);">166 mg/dL &nbsp;<span style="font-size:12px;">⚠ High (normal &lt;140)</span></div></div>
+        <div class="pred-row"><div class="pred-key">Blood Pressure</div><div class="pred-val">72 mmHg &nbsp;<span style="color:var(--muted);font-size:12px;">normal</span></div></div>
+        <div class="pred-row"><div class="pred-key">Skin Thickness</div><div class="pred-val">19 mm &nbsp;<span style="color:var(--muted);font-size:12px;">normal</span></div></div>
+        <div class="pred-row"><div class="pred-key">Insulin</div><div class="pred-val">175 µU/mL &nbsp;<span style="color:var(--muted);font-size:12px;">elevated</span></div></div>
+        <div class="pred-row"><div class="pred-key">BMI</div><div class="pred-val">25.8 &nbsp;<span style="color:var(--muted);font-size:12px;">normal range</span></div></div>
+        <div class="pred-row"><div class="pred-key">Pedigree function</div><div class="pred-val">0.587 &nbsp;<span style="color:var(--amber);font-size:12px;">moderate family risk</span></div></div>
+        <div class="pred-row"><div class="pred-key">Age</div><div class="pred-val" style="color:var(--amber);">51 years &nbsp;<span style="font-size:12px;">⚠ higher risk group</span></div></div>
+      </div>
+      <div class="pred-result result-yes">⚠ Model predicts: Diabetic (1)</div>
+      <p style="font-size:13px;color:var(--muted);margin-top:8px;line-height:1.6;">
+        High glucose (166, above the diabetic threshold of 140) combined with age 51 and moderate family history are the strongest drivers of this prediction. 
+        The raw values are first transformed using <code>scaler.transform()</code> — not <code>fit_transform()</code> — so the same scale learned from training data is applied.
+      </p>
+    </div>
+
+    <h3>Why <code>scaler.transform()</code> and NOT <code>scaler.fit_transform()</code> for new data?</h3>
+    <div class="card" style="background:var(--accent-bg); border-color:#b5d4f4;">
+      <p style="font-size:13.5px; margin:0; line-height:1.7;">
+        <code>fit_transform()</code> would <em>learn new mean/std from this single input</em> — completely different from what was learned on the 614 training rows. 
+        The scaled value would be meaningless. We must use the <strong>same scaling parameters</strong> that were fit on training data, so <code>scaler.transform()</code> is correct.
+        This principle applies to all preprocessing: fit once on training data, transform everywhere else.
+      </p>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- ═══ 7. Q&A ═══ -->
+  <div class="section" id="qa">
+    <div class="sec-label">Section 7</div>
+    <h2>Probable Exam / Viva Questions & Answers</h2>
+    <p>Click any question to reveal the answer.</p>
+
+    <div id="qa-list">
+
+      <div class="qa-item">
+        <button class="qa-q" onclick="toggleQA(this)">Why do we use StandardScaler before SVM? What happens if we skip it? <span class="arrow">›</span></button>
+        <div class="qa-a"><p>SVM is a <strong>distance-based algorithm</strong> — it maximises the margin between classes, and margin is measured in terms of Euclidean distance. If features have very different ranges (Insulin: 0–846, Pregnancies: 0–17), the algorithm will assign more importance to Insulin simply because its values are larger, not because it's medically more significant. StandardScaler brings all features to mean=0, std=1, ensuring every feature has equal influence. Without scaling, the SVM boundary would be distorted and accuracy would drop significantly.</p></div>
+      </div>
+
+      <div class="qa-item">
+        <button class="qa-q" onclick="toggleQA(this)">What does <code>stratify=Y</code> do in train_test_split? <span class="arrow">›</span></button>
+        <div class="qa-a"><p>Without <code>stratify</code>, the random split might put most diabetic patients into the training set and almost none in the test set (or vice versa). <code>stratify=Y</code> ensures both the training and test sets maintain the <strong>same class proportion</strong> as the original dataset (≈65% healthy, 35% diabetic). This gives a reliable and fair evaluation of the model's performance on both classes.</p></div>
+      </div>
+
+      <div class="qa-item">
+        <button class="qa-q" onclick="toggleQA(this)">What are support vectors? Why are other data points ignored? <span class="arrow">›</span></button>
+        <div class="qa-a"><p>Support vectors are the <strong>training data points that lie closest to the decision boundary</strong> (hyperplane). The SVM optimisation only cares about maximising the margin between these edge points — all other points, being far from the boundary, don't affect where the boundary is placed. If you removed a non-support-vector point from the training set, the model wouldn't change at all. This makes SVM computationally efficient and less sensitive to outliers far from the boundary.</p></div>
+      </div>
+
+      <div class="qa-item">
+        <button class="qa-q" onclick="toggleQA(this)">What is the difference between kernel='linear' and kernel='rbf'? <span class="arrow">›</span></button>
+        <div class="qa-a"><p><strong>linear kernel</strong>: finds a flat (linear) hyperplane to separate the classes. Works well when the data is approximately linearly separable. Simpler, faster, and more interpretable.<br><br>
+        <strong>RBF (Radial Basis Function) kernel</strong>: maps data into a higher-dimensional space and finds a boundary there, which corresponds to a <em>curved</em> boundary in the original space. Works better when classes are not linearly separable. Has a hyperparameter <code>gamma</code> controlling how tightly it wraps around data points.<br><br>
+        For this dataset, linear works reasonably well (~77% accuracy). RBF might do slightly better but risks overfitting without cross-validation.</p></div>
+      </div>
+
+      <div class="qa-item">
+        <button class="qa-q" onclick="toggleQA(this)">The dataset has 500 healthy and 268 diabetic. How does this imbalance affect the model? <span class="arrow">›</span></button>
+        <div class="qa-a"><p>A model that always predicts "not diabetic" would achieve <strong>65% accuracy</strong> without learning anything useful. So accuracy alone is deceptive for imbalanced datasets. Better metrics are:<br>
+        • <strong>Precision</strong>: of all predicted diabetics, how many actually are?<br>
+        • <strong>Recall (Sensitivity)</strong>: of all actual diabetics, how many did we catch? (This is critical in medical diagnosis — missing a diabetic is dangerous)<br>
+        • <strong>F1-score</strong>: harmonic mean of precision and recall<br>
+        • <strong>AUC-ROC</strong>: overall performance across all thresholds<br><br>
+        Techniques to handle imbalance: SMOTE (oversample minority), class_weight='balanced' in SVC, or undersample the majority class.</p></div>
+      </div>
+
+      <div class="qa-item">
+        <button class="qa-q" onclick="toggleQA(this)">Glucose, Insulin, BMI have 0 values — are these valid? How should they be handled? <span class="arrow">›</span></button>
+        <div class="qa-a"><p>No — they are <strong>biologically impossible</strong>. A person cannot have a glucose of 0 or a BMI of 0 and be alive. These zeros represent <strong>missing values that were encoded as 0</strong> rather than NaN. In this notebook they are ignored (a simplification). In a real project you'd:<br>
+        1. Replace 0s with NaN<br>
+        2. Impute with the mean/median of that column (e.g., median glucose for diabetics and non-diabetics separately)<br>
+        3. Or drop rows with impossible values<br><br>
+        Affected columns: Glucose, BloodPressure, SkinThickness, Insulin, BMI.</p></div>
+      </div>
+
+      <div class="qa-item">
+        <button class="qa-q" onclick="toggleQA(this)">Why do we check both training accuracy AND test accuracy? <span class="arrow">›</span></button>
+        <div class="qa-a"><p>Training accuracy tells you how well the model memorised the training data. Test accuracy tells you how well it <strong>generalises to unseen data</strong> — this is what matters in the real world.<br><br>
+        • <strong>Small gap</strong> (like in this project, ~1–2%): good generalisation<br>
+        • <strong>High train, low test</strong> (e.g. 95% train, 65% test): overfitting — the model memorised noise, not patterns<br>
+        • <strong>Both low</strong>: underfitting — the model isn't learning the data at all<br><br>
+        Always use an unseen test set to report your final model's performance.</p></div>
+      </div>
+
+      <div class="qa-item">
+        <button class="qa-q" onclick="toggleQA(this)">Why use <code>scaler.transform()</code> and not <code>scaler.fit_transform()</code> on test/new data? <span class="arrow">›</span></button>
+        <div class="qa-a"><p><code>fit_transform()</code> first <em>learns</em> (fits) the mean and std from the data, then transforms it. If you called <code>fit_transform()</code> on the test set or a new input, it would learn completely different statistics from just those few rows, producing meaningless scaled values.<br><br>
+        You must use <strong>the same mean and std that were learned from the training data</strong>. That's what <code>scaler.transform()</code> does — it uses the stored parameters from the earlier <code>scaler.fit(X_train)</code> call. This principle is called <strong>preventing data leakage</strong>.</p></div>
+      </div>
+
+      <div class="qa-item">
+        <button class="qa-q" onclick="toggleQA(this)">What does <code>random_state=2</code> do? <span class="arrow">›</span></button>
+        <div class="qa-a"><p><code>train_test_split</code> shuffles the data randomly before splitting. Without a fixed seed, you'd get a different split every run, leading to different results. <code>random_state=2</code> seeds the random number generator so the shuffle is <strong>identical every time</strong> — making the experiment reproducible. Any integer works; 2 is just what was chosen here. This is important for debugging, comparison, and reporting results.</p></div>
+      </div>
+
+      <div class="qa-item">
+        <button class="qa-q" onclick="toggleQA(this)">What does <code>reshape(1, -1)</code> do and why is it needed? <span class="arrow">›</span></button>
+        <div class="qa-a"><p>scikit-learn's <code>predict()</code> expects input with shape <code>(n_samples, n_features)</code> — a 2D array. When you create a numpy array from a single tuple, it has shape <code>(8,)</code> — a 1D array.<br><br>
+        <code>.reshape(1, -1)</code> reshapes it to <code>(1, 8)</code>: 1 sample with 8 features. The <code>-1</code> means "infer this dimension automatically". Without this reshape, sklearn throws a: <code>ValueError: Expected 2D array, got 1D array instead.</code></p></div>
+      </div>
+
+      <div class="qa-item">
+        <button class="qa-q" onclick="toggleQA(this)">What is the DiabetesPedigreeFunction column? <span class="arrow">›</span></button>
+        <div class="qa-a"><p>It is a <strong>genetic risk score</strong> calculated from the patient's family history of diabetes. Higher values indicate a stronger hereditary risk. It considers how many first and second-degree relatives had diabetes and how recently. Range is 0.08–2.42. It's one of the more unique features in this dataset — essentially encoding how much your genes predispose you to diabetes.</p></div>
+      </div>
+
+      <div class="qa-item">
+        <button class="qa-q" onclick="toggleQA(this)">How would you improve this model beyond what the notebook does? <span class="arrow">›</span></button>
+        <div class="qa-a"><p>Several improvements:<br>
+        1. <strong>Handle zero values</strong> in Glucose, Insulin, BMI (impute or remove)<br>
+        2. <strong>Use cross-validation</strong> (k-fold) instead of a single train/test split for more reliable accuracy estimates<br>
+        3. <strong>Try other kernels</strong> (RBF) and tune <code>C</code> and <code>gamma</code> with GridSearchCV<br>
+        4. <strong>Better metrics</strong>: report precision, recall, F1, and AUC-ROC — not just accuracy<br>
+        5. <strong>Address class imbalance</strong>: use <code>class_weight='balanced'</code> or SMOTE<br>
+        6. <strong>Feature engineering</strong>: create interaction terms like Glucose × BMI<br>
+        7. <strong>Compare models</strong>: try Random Forest, Logistic Regression, XGBoost and compare performance</p></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div style="text-align:center; color:var(--muted); font-size:12px; margin-top:3rem; padding-top:1rem; border-top: 1px solid var(--border);">
+    Diabetes SVM Explainer &nbsp;·&nbsp; Pima Indians Dataset &nbsp;·&nbsp; scikit-learn SVC (kernel=linear)
+  </div>
+
+</div><!-- end .page -->
+
+<script>
+/* ── Pipeline steps ── */
+const steps = [
+  {
+    icon:"📦", color:"#E6F1FB",
+    title:"Step 1 — Load the dataset",
+    body:`<code>pd.read_csv('diabetes.csv')</code> loads the file into a DataFrame called <code>healthy</code>.<br><br>
+    Shape: <strong>(768, 9)</strong> — 768 rows, 9 columns. No missing values (NaN count = 0 for all columns). 
+    However, several columns contain <strong>biologically impossible 0s</strong> (e.g. Glucose=0, BMI=0) which are actually missing values encoded as 0 — a known issue with this dataset that the notebook doesn't address.`
+  },
+  {
+    icon:"🔍", color:"#EAF3DE",
+    title:"Step 2 — Exploratory Data Analysis",
+    body:`Three key EDA steps:<br>
+    <strong>1. describe()</strong> — shows mean, std, min, max for all columns<br>
+    <strong>2. value_counts()</strong> — reveals the class split: 500 healthy (0), 268 diabetic (1) — <em>imbalanced!</em><br>
+    <strong>3. groupby('Outcome').mean()</strong> — reveals that diabetic patients have significantly higher average Glucose (~141 vs ~110) and BMI (~35 vs ~30). This confirms these features are medically relevant predictors.`
+  },
+  {
+    icon:"✂️", color:"#FAEEDA",
+    title:"Step 3 — Separate features (X) and label (Y)",
+    body:`<code>X = healthy.drop(columns='Outcome')</code> → shape (768, 8) — all 8 medical feature columns<br>
+    <code>Y = healthy['Outcome']</code> → shape (768,) — the 0/1 target column<br><br>
+    This is standard ML preparation. X is what the model learns from (inputs). Y is what it learns to predict (output). They must stay aligned row-by-row.`
+  },
+  {
+    icon:"📐", color:"#EEEDFE",
+    title:"Step 4 — Standardise with StandardScaler",
+    body:`Formula: <code>z = (x − mean) / std</code> — each feature becomes mean=0, std=1<br><br>
+    <strong>Why this matters for SVM:</strong> SVM measures Euclidean distance to find the maximum margin. If Insulin has values 0–846 and Pregnancies has values 0–17, Insulin dominates the distance calculation unfairly.<br><br>
+    <strong>Critical rule:</strong> <code>scaler.fit(X_train)</code> only — never fit on test data. Use <code>scaler.transform()</code> on test/new data to prevent data leakage.`
+  },
+  {
+    icon:"🎯", color:"#FAEEDA",
+    title:"Step 5 — Train / Test split (80/20)",
+    body:`<code>train_test_split(X, Y, test_size=0.2, stratify=Y, random_state=2)</code><br><br>
+    • <strong>80% training</strong> → 614 rows (model learns from these)<br>
+    • <strong>20% testing</strong> → 154 rows (model evaluated on these — never seen before)<br>
+    • <code>stratify=Y</code> → preserves the 65/35 class ratio in both splits<br>
+    • <code>random_state=2</code> → reproducible shuffle every run`
+  },
+  {
+    icon:"🤖", color:"#E1F5EE",
+    title:"Step 6 — Train the SVM classifier",
+    body:`<code>svm.SVC(kernel='linear').fit(X_train, Y_train)</code><br><br>
+    SVM finds a <strong>hyperplane</strong> (flat decision surface in 8D space) that separates the two classes with the maximum margin. The closest training points to the boundary are the <strong>support vectors</strong> — they define the boundary. All other points are irrelevant.<br><br>
+    Typical training time: &lt;1 second on this dataset size.`
+  },
+  {
+    icon:"🔮", color:"#FAEEDA",
+    title:"Step 7 — Evaluate & predict",
+    body:`<strong>Evaluation:</strong> Training accuracy ≈ 78.6%, Test accuracy ≈ 77.3%. Small gap = good generalisation.<br><br>
+    <strong>Prediction pipeline for new data:</strong><br>
+    1. Convert to numpy array with <code>np.asarray()</code><br>
+    2. Reshape to 2D with <code>.reshape(1, -1)</code> → (1, 8)<br>
+    3. Scale with <code>scaler.transform()</code> (same params as training)<br>
+    4. Pass to <code>classifier.predict()</code> → returns [0] or [1]`
+  }
+];
+
+function showStep(i) {
+  for(let j=0; j<7; j++) {
+    const el = document.getElementById('ps'+j);
+    el.classList.toggle('active', j===i);
+  }
+  const s = steps[i];
+  document.getElementById('pip-detail').innerHTML = `
+    <div class="pip-head">
+      <div class="pip-icon">${s.icon}</div>
+      <div class="pip-title">${s.title}</div>
+    </div>
+    <div class="pip-body">${s.body}</div>
+  `;
+}
+showStep(0);
+
+/* ── Q&A accordion ── */
+function toggleQA(btn) {
+  const ans = btn.nextElementSibling;
+  const isOpen = ans.classList.contains('open');
+  // close all
+  document.querySelectorAll('.qa-a').forEach(a => a.classList.remove('open'));
+  document.querySelectorAll('.qa-q').forEach(q => q.classList.remove('open'));
+  if(!isOpen) {
+    ans.classList.add('open');
+    btn.classList.add('open');
+  }
+}
+</script>
+</body>
+</html>
