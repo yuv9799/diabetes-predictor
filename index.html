@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Diabetes Predictor</title>
+  <style>
+    :root {
+      --primary: #e63946;
+      --bg: #ffffff;
+      --text: #1f2937;
+      --card: #f8fafc;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%);
+      color: var(--text);
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: var(--bg);
+      border-radius: 16px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+      overflow: hidden;
+    }
+    .header {
+      background: var(--primary);
+      color: white;
+      padding: 28px 32px;
+      text-align: center;
+    }
+    .header h1 { margin: 0; font-size: 28px; }
+    .header p { margin: 10px 0 0; opacity: 0.9; }
+    .stats {
+      display: flex;
+      justify-content: space-around;
+      padding: 20px 32px;
+      background: #fff5f5;
+      border-bottom: 1px solid #fecaca;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .stat {
+      text-align: center;
+    }
+    .stat-value { font-weight: 700; color: var(--primary); font-size: 18px; }
+    .stat-label { font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; }
+    .content { padding: 32px; }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+    }
+    .form-group { display: flex; flex-direction: column; }
+    .form-group label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 6px;
+    }
+    .form-group input {
+      padding: 10px 14px;
+      border: 2px solid #e5e7eb;
+      border-radius: 10px;
+      font-size: 16px;
+      transition: border-color .2s;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    .actions { margin-top: 28px; display: flex; gap: 16px; flex-wrap: wrap; }
+    button {
+      flex: 1;
+      min-width: 150px;
+      padding: 14px 28px;
+      font-size: 16px;
+      font-weight: 700;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform .1s, opacity .2s;
+    }
+    button:active { transform: scale(0.98); }
+    #predictBtn { background: var(--primary); color: white; }
+    #predictBtn:hover { opacity: 0.9; }
+    #result {
+      margin-top: 28px;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+      font-size: 18px;
+      font-weight: 700;
+      display: none;
+    }
+    .result-yes { background: #fee2e2; color: #991b1b; border: 2px solid #fca5a5; }
+    .result-no { background: #d1fae5; color: #065f46; border: 2px solid #6ee7b7; }
+    .footer {
+      text-align: center;
+      padding: 20px;
+      font-size: 13px;
+      color: #6b7280;
+      background: #f9fafb;
+      border-top: 1px solid #e5e7eb;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🩺 Diabetes Predictor</h1>
+      <p>Predict diabetes risk using the Pima Indians dataset (static version)</p>
+    </div>
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-value">83.12%</div>
+        <div class="stat-label">Training Accuracy</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">77.27%</div>
+        <div class="stat-label">Test Accuracy</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">SVM</div>
+        <div class="stat-label">Model</div>
+      </div>
+    </div>
+    <div class="content">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="p">Pregnancies</label>
+          <input type="number" id="p" min="0" value="0" />
+        </div>
+        <div class="form-group">
+          <label for="g">Glucose</label>
+          <input type="number" id="g" min="0" value="120" />
+        </div>
+        <div class="form-group">
+          <label for="bp">Blood Pressure</label>
+          <input type="number" id="bp" min="0" value="70" />
+        </div>
+        <div class="form-group">
+          <label for="st">Skin Thickness</label>
+          <input type="number" id="st" min="0" value="20" />
+        </div>
+        <div class="form-group">
+          <label for="insulin">Insulin</label>
+          <input type="number" id="insulin" min="0" value="80" />
+        </div>
+        <div class="form-group">
+          <label for="bmi">BMI</label>
+          <input type="number" id="bmi" min="0" step="0.1" value="25.0" />
+        </div>
+        <div class="form-group">
+          <label for="dpf">Diabetes Pedigree Function</label>
+          <input type="number" id="dpf" min="0" step="0.001" value="0.500" />
+        </div>
+        <div class="form-group">
+          <label for="age">Age</label>
+          <input type="number" id="age" min="0" value="30" />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="predictBtn">Predict</button>
+        <button id="resetBtn" style="background:#e5e7eb; color:#374151;">Reset</button>
+      </div>
+      <div id="result"></div>
+    </div>
+    <div class="footer">
+      Built for GitHub Pages • Static HTML/JS version
+    </div>
+  </div>
+  <script>
+    const params = {
+      scaler: {
+        mean: [3.8450520833333335, 120.89453125, 69.10546875, 20.536458333333332, 79.79947916666667, 31.992578124999997, 0.4718763020833333, 33.238885416666664],
+        scale: [3.367360441018003, 31.97261819513757, 19.355081176128146, 15.951636943772268, 110.23682009379856, 7.884260256799838, 0.3311649099861359, 11.760231466129586]
+      },
+      classifier: {
+        coef: [[-0.02579997, -0.44657127, 0.04916695, -0.09873349, -0.00175017, 0.38713546, -0.04614169, -0.03539912]],
+        intercept: [-8.366093]
+      }
+    };
+
+    function standardize(value, mean, scale) {
+      return (value - mean) / scale;
+    }
+
+    function predict(x, coef, intercept) {
+      let sum = intercept[0];
+      for (let i = 0; i < x.length; i++) {
+        sum += x[i] * coef[0][i];
+      }
+      return sum;
+    }
+
+    function sigmoid(z) {
+      return 1 / (1 + Math.exp(-z));
+    }
+
+    document.getElementById('predictBtn').addEventListener('click', () => {
+      const features = [
+        parseFloat(document.getElementById('p').value),
+        parseFloat(document.getElementById('g').value),
+        parseFloat(document.getElementById('bp').value),
+        parseFloat(document.getElementById('st').value),
+        parseFloat(document.getElementById('insulin').value),
+        parseFloat(document.getElementById('bmi').value),
+        parseFloat(document.getElementById('dpf').value),
+        parseFloat(document.getElementById('age').value)
+      ];
+
+      const standardized = features.map((v, i) => standardize(v, params.scaler.mean[i], params.scaler.scale[i]));
+      const z = predict(standardized, params.classifier.coef, params.classifier.intercept);
+      const prob = sigmoid(z);
+      const label = prob < 0.5 ? 0 : 1;
+
+      const resultEl = document.getElementById('result');
+      resultEl.style.display = 'block';
+      if (label === 0) {
+        resultEl.className = 'result-no';
+        resultEl.innerHTML = `✅ Prediction: <strong>Non-Diabetic</strong><br/><small>Probability: ${(1-prob).toFixed(2)}</small>`;
+      } else {
+        resultEl.className = 'result-yes';
+        resultEl.innerHTML = `⚠️ Prediction: <strong>Diabetic</strong><br/><small>Probability: ${prob.toFixed(2)}</small>`;
+      }
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      document.querySelectorAll('input').forEach(i => {
+        if (i.id === 'p') i.value = 0;
+        else if (i.id === 'g') i.value = 120;
+        else if (i.id === 'bp') i.value = 70;
+        else if (i.id === 'st') i.value = 20;
+        else if (i.id === 'insulin') i.value = 80;
+        else if (i.id === 'bmi') i.value = 25.0;
+        else if (i.id === 'dpf') i.value = 0.500;
+        else if (i.id === 'age') i.value = 30;
+      });
+      document.getElementById('result').style.display = 'none';
+    });
+  </script>
+</body>
+</html>
